@@ -1,5 +1,5 @@
 ---
-title: "SIB 2018 Single Cell Tutorial"
+title: "SIB scRNA-seq Tutorial"
 date: "`r BiocStyle::doc_date()`"
 output: 
     BiocStyle::html_document:
