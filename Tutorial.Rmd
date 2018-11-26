@@ -1,5 +1,5 @@
 ---
-title: "ECCB 2018 Single Cell Tutorial"
+title: "SIB 2018 Single Cell Tutorial"
 date: "`r BiocStyle::doc_date()`"
 output: 
     BiocStyle::html_document:
