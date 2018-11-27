@@ -23,6 +23,7 @@ knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
 # General info
 
 **Course Material and code on github**
+
 https://github.com/fmicompbio/SIB_scRNA-seq_Tutorial_2018/
 
 
@@ -725,7 +726,7 @@ After normalization, there could still be confounders in the data. Technical con
 * Multiple other methods work on similar principles, but we will not cover those - eg. [*BASiCS*](https://github.com/catavallejos/BASiCS), [*scLVM*](https://github.com/PMBio/scLVM), [*RUVr*](http://bioconductor.org/packages/release/bioc/html/RUVSeq.html), etc.
 
 
-### **RUVSeq**
+## **RUVSeq**
 For $n$ samples and $J$ genes, consider the following generalized linear model (GLM), where the RNA-Seq read counts are regressed on both the known covariates of interest and unknown factors of unwanted variation:
 
 \begin{equation}\label{eq1}
@@ -758,7 +759,7 @@ umi.qc.norm <- t(t(umi.qc) /colSums(umi.qc) *1e6)
 Log_NODG <- log2(colSums(umi.qc[endog.qc,]>0)+1) 
 ```
 
-## RUVg
+### RUVg
 
 *RUVg* uses negative control genes, assumed to have constant expression across samples
 
@@ -808,7 +809,7 @@ rm(umi.qc.ruvg); rm(PCA); rm(tSNE); rm(datt)
 ```
 
 
-## *RUVs*
+### *RUVs*
 
 *RUVs* uses centered (technical) replicate/negative control samples for which the covariates of interest are constant
 
@@ -881,15 +882,24 @@ For every single gene, we fit a mixed model assuming differences between batches
 $$ y_{ijk} = \mu + \alpha_i + b_j + \epsilon_{ijk} $$
 
 where 
+
 * $y_{ijk}$ is the log2 counts-per-million (cpm) for any gene in individual $i$
+
 * batch $j$, and cell $k$, $\mu$ is the gene-specific expression level across all cells
+
 * $\alpha_i$ is the expression level specific to individual $i$
+
 * $b_j$ is batch $j$'s deviation of expression level from gene-specific expression levels, and
+
 * $\epsilon_{ijk}$ is the models' residual error.
 
+
 We assume that
+
 * $b_j$ follows a normal distribution with $b_j \sim N(0, \sigma^2_b)$ for $j = 1, \dots, 9$
+
 * $\epsilon_{ijk} \sim N(0, \sigma^2_\epsilon)$ for $i = 1, 2, 3; j = 1, \dots, 9; and k = 1, \dots, n_{ij}$
+
 * $n_ij$ denotes the number of cells in individual $i$, batch $j$
 
 ```{r mixed_model, eval=FALSE}
@@ -938,34 +948,37 @@ rm(umi.qc.ruvm); rm(PCA); rm(tSNE); rm(datt)
 
 ## Batch correction using Mutual Nearest Neighbours
  
-Mutual nearest neighbors (MNNs) can also be used to perform batch correction and remove unwanted variability. [*Haghverdi et al. 2018*](https://www.ncbi.nlm.nih.gov/pubmed/29608177) implemented the method and is included as *fastMNN* / *mnnCorrect* functions in the package *scran*. The method assumes that two batches contain at least one common cell type, and that the batch effect is orthogonal to the biological differences in each batch.
+Mutual nearest neighbors (MNNs) can also be used to perform batch correction and remove unwanted variation. [*Haghverdi et al. 2018*](https://www.ncbi.nlm.nih.gov/pubmed/29608177) implemented the method and is included as `fastMNN` / `mnnCorrect` functions in the package `scran`. The method assumes that two batches contain at least one common cell type, and that the batch effect is orthogonal to the biological differences in each batch.
  
 ![Schematics of batch-effect correction by MNN](./figures/laleh_mnn.jpg)
-(a) Batch 1 and batch 2 in high dimensions with an almost orthogonal batch effect difference between them. (b) The algorithm identifies matching cell types by finding MNN pairs of cells
+
+* (a) Batch 1 and batch 2 in high dimensions with an almost orthogonal batch effect difference between them. 
+
+* (b) The algorithm identifies matching cell types by finding MNN pairs of cells
+
+
+The `fastMNN` function computes corrected values in a low-dimensional subspace defined by the first 50 PCs.
  
-The fastMNN function computes corrected values in a low-dimensional subspace defined by the first 50 PCs.
- 
-The experiment design of *tung* data does not satisfy this assumption completely. While we have 3 replicates each of individuals A, B, and C, they do not constitute 3 batches by themselves. But we can still apply the method on individuals separately to remove the effect of replicates. We will take top 50 principal components we computed on uncorrected data and use them as features to remove replicate effects from A, B and C.
+The experiment design of `tung` dataset does not satisfy the required assumption completely. While we have 3 replicates each of individuals A, B, and C, they do not constitute 3 batches by themselves. But we can still apply the method on individuals separately to remove the effect of replicates. We will take top 50 principal components we computed on uncorrected data and use them as features to remove replicate effects from A, B and C.
   
  
 ```{r mnn1}
 # Replicate and Individual
-batch = sapply(strsplit(as.vector(rownames(PCA_Sel$x)), ".", fixed=TRUE),"[",2)
+repl = sapply(strsplit(as.vector(rownames(PCA_Sel$x)), ".", fixed=TRUE),"[",2)
 indiv = sapply(strsplit(as.vector(rownames(PCA_Sel$x)), ".", fixed=TRUE),"[",1)
  
-pb1 <- PCA_Sel$x[batch=="r1" & indiv=="A",1:50]
-pb3 <- PCA_Sel$x[batch=="r3" & indiv=="A",1:50]
-pb4 <- PCA_Sel$x[batch=="r1" & indiv=="B",1:50]
-pb5 <- PCA_Sel$x[batch=="r2" & indiv=="B",1:50]
-pb6 <- PCA_Sel$x[batch=="r3" & indiv=="B",1:50]
-pb7 <- PCA_Sel$x[batch=="r1" & indiv=="C",1:50]
-pb8 <- PCA_Sel$x[batch=="r2" & indiv=="C",1:50]
-pb9 <- PCA_Sel$x[batch=="r3" & indiv=="C",1:50]
+pb1 <- PCA_Sel$x[repl=="r1" & indiv=="A",1:50]
+pb3 <- PCA_Sel$x[repl=="r3" & indiv=="A",1:50]
+pb4 <- PCA_Sel$x[repl=="r1" & indiv=="B",1:50]
+pb5 <- PCA_Sel$x[repl=="r2" & indiv=="B",1:50]
+pb6 <- PCA_Sel$x[repl=="r3" & indiv=="B",1:50]
+pb7 <- PCA_Sel$x[repl=="r1" & indiv=="C",1:50]
+pb8 <- PCA_Sel$x[repl=="r2" & indiv=="C",1:50]
+pb9 <- PCA_Sel$x[repl=="r3" & indiv=="C",1:50]
  
 outA <- fastMNN(pb1,pb3, pc.input = T)
 outB <- fastMNN(pb4,pb5,pb6, pc.input = T)
 outC <- fastMNN(pb7,pb8,pb9, pc.input = T)
- 
 ```
  
 The output of *fastMNN* contains principal components corrected for replicates. We will now combine these corrected samples to plot then in principal components and tSNE.
@@ -976,24 +989,26 @@ tSNE=Rtsne(X=PCA,dim=2,perplexity=min(50,round(sqrt(nrow(PCA)))),
            theta=0.25,pca=F,is_distance = F) 
  
 # Lets put together replicate corrected individuals
-datt=data.frame(Individual=sapply(strsplit(as.vector(rownames(PCA)), ".", fixed=TRUE),"[",1),
-                Replicate=sapply(strsplit(as.vector(rownames(PCA)), ".", fixed=TRUE),"[",2),
-                PCA=PCA[,1:2], tSNE=tSNE$Y)
+datt = data.frame(
+  Individual=sapply(strsplit(as.vector(rownames(PCA)), ".", fixed=TRUE),"[",1),
+  Replicate=sapply(strsplit(as.vector(rownames(PCA)), ".", fixed=TRUE),"[",2),
+  PCA=PCA[,1:2], 
+  tSNE=tSNE$Y)
 ```
  
 Projection of replicates after correction:
  
 ```{r mnn3}
-chart_batch_pca=ggplot(datt,aes(x=PCA.PC1,y=PCA.PC2,color=Replicate))+geom_point(size=2,alpha=0.8)
-chart_batch_tsne=ggplot(datt,aes(x=tSNE.1,y=tSNE.2,color=Replicate))+geom_point(size=2,alpha=0.8)
-grid.arrange(chart_batch_pca, chart_batch_tsne)
+chart_repl_pca=ggplot(datt,aes(x=PCA.PC1,y=PCA.PC2,color=Replicate)) + geom_point(size=2,alpha=0.8)
+chart_repl_tsne=ggplot(datt,aes(x=tSNE.1,y=tSNE.2,color=Replicate)) + geom_point(size=2,alpha=0.8)
+grid.arrange(chart_repl_pca, chart_repl_tsne)
 ```
  
 Projection of individuals after correction
  
 ```{r mnn4}
-chart_indiv_pca=ggplot(datt,aes(x=PCA.PC1,y=PCA.PC2,color=Individual))+geom_point(size=2,alpha=0.8)
-chart_indiv_tsne=ggplot(datt,aes(x=tSNE.1,y=tSNE.2,color=Individual))+geom_point(size=2,alpha=0.8)
+chart_indiv_pca=ggplot(datt,aes(x=PCA.PC1,y=PCA.PC2,color=Individual)) + geom_point(size=2,alpha=0.8)
+chart_indiv_tsne=ggplot(datt,aes(x=tSNE.1,y=tSNE.2,color=Individual)) + geom_point(size=2,alpha=0.8)
 grid.arrange(chart_indiv_pca, chart_indiv_tsne)
 ```
 
