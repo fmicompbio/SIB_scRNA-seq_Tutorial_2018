@@ -981,7 +981,10 @@ How has the topology been altered?
 
 ## Differential Expression Analyses 
 
-* Single cell experiments generally have a much larger number of samples (i.e. cells) for each group compared to bulk RNA-seq. This enables us to  take advantage of the whole distribution of expression values in each group to identify differences between groups rather than only comparing estimates of mean-expression as is standard for bulk RNASeq.
+* Single cell experiments generally have a much larger number of samples (i.e. cells) for each group compared to bulk RNA-seq. This enables us to compare different properties of the count distributions founf in cell subpopulations. So, in addition to comparing location estimates for gene expression (e.g means, medians), we can test for differences in dispersion, skewness or overall distribution for individual genes:
+  
+  ![distribution_properties](./figures/Distribution_Differences.png)
+
 * However, when compared to bulk RNAseq profiles, single cell measurements have a high dropout rates relative to the non-zero read counts.
 
 ```{r rnbiom, message=FALSE}
