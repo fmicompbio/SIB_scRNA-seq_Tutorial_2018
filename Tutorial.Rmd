@@ -23,7 +23,7 @@ knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
 # General info
 
 **Course Material and code on github**
-https://github.com/ppapasaikas/ECCB2018_SC
+https://github.com/fmicompbio/SIB_scRNA-seq_Tutorial_2018/
 
 
 **Access to the FMI rstudio server**
@@ -37,7 +37,7 @@ After logging in with your credentials switch working directory by typing:
 
 ```{r Switch to tutorial directory, eval=FALSE}
 #Absolute path to ECCB2018_SC repository in the the FMT ext machine
-setwd("/home/radmin/ECCB2018_SC/") 
+setwd("/home/radmin/SIB_scRNA-seq_Tutorial_2018/") 
 ```
 
 From here on you can run the turorial code by copying and pasting on your console.
