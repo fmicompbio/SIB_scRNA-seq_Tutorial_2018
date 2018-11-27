@@ -44,7 +44,7 @@ From here on you can run the turorial code by copying and pasting on your consol
 Alternatively you could File -> File Open -> Tutorial_day2.rmd and execute the code directly from the file.
 
 
-# Single Cell Analysis Tutorial Part 2
+# Analysis of differential gene expression
 
 
 Finally we will also load a few packages and functions that will be used during the training:
@@ -225,7 +225,8 @@ The griph plot above shows the expression of gene with lowest p-value for our li
 
 
 
-#### Gene Set Enrichment Analysis
+## Gene Set Enrichment Analysis
+
 MAST uses a competitive gene set enrichment test, in which a contrast (hurdle model coefficient) from various gene sets of interest is compared to the background, accounting for the intergene correlation of the module coefficient.
 
 To estimate the intergene correlation of the contrast, MAST uses bootstrapping. Cells are sampled with replacement a number of times and it refits the model. The bootstrapping can be slow (DON'T RUN the following code).
@@ -264,7 +265,7 @@ ggplot(gseaTable, aes(y=set, x=variable, fill=value))+geom_raster() + scale_fill
 ```
 
 
-### SCDE 
+## SCDE 
 SCDE is the first single-cell specific DE method. It fits a zero-inflated negative binomial model to expression data using Bayesian statistics. The usage below tests for differences in mean expression of individual genes across groups but recent versions include methods to test for differences in mean expression or dispersion of groups of genes, usually representing a pathway.
 
 ```{r SCDE, message=FALSE, eval=FALSE}
