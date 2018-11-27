@@ -3,6 +3,13 @@ require("Rtsne")
 require("gridExtra")
 require("griph")
 require("org.Hs.eg.db")
+library("SingleCellExperiment")
+library("scater")
+library("monocle")
+library("destiny")
+library("ggbeeswarm")
+library("scran")
+
 
 #' This is the function for selection of overdispersed genes adapted from:
 #' https://github.com/10XGenomics/single-cell-3prime-paper/

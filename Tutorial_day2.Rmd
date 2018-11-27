@@ -47,6 +47,15 @@ Alternatively you could File -> File Open -> Tutorial_day2.rmd and execute the c
 # Single Cell Analysis Tutorial Part 2
 
 
+Finally we will also load a few packages and functions that will be used during the training:
+```{r source_helper_functions, message=FALSE}
+#PATH="/home/radmin/SIB_scRNA-seq_Tutorial_2018/" #Abs Path to ECCB repo in the the ext-fmi machine
+PATH=""
+source(paste(PATH, "helper_functions.R",sep=""))
+```
+
+
+
 ```{r read_worksapce_image, message=FALSE}
 DataList <- readRDS("data/2ndDay_DataList.rds")
 clean_anno=DataList$clean_anno
