@@ -887,9 +887,7 @@ $$ y_{ijk} = \mu + \alpha_i + b_j + \epsilon_{ijk} $$
 
 where 
 
-* $y_{ijk}$ is the log2 counts-per-million (cpm) for any gene in individual $i$
-
-* batch $j$, and cell $k$, $\mu$ is the gene-specific expression level across all cells
+* $y_{ijk}$ is the log2 counts-per-million (cpm) for any gene in individual $i$, batch $j$, and cell $k$, $\mu$ is the gene-specific expression level across all cells
 
 * $\alpha_i$ is the expression level specific to individual $i$
 
@@ -902,9 +900,9 @@ We assume that
 
 * $b_j$ follows a normal distribution with $b_j \sim N(0, \sigma^2_b)$ for $j = 1, \dots, 9$
 
-* $\epsilon_{ijk} \sim N(0, \sigma^2_\epsilon)$ for $i = 1, 2, 3; j = 1, \dots, 9; and k = 1, \dots, n_{ij}$
+* $\epsilon_{ijk} \sim N(0, \sigma^2_\epsilon)$ for $i = 1, 2, 3; j = 1, \dots, 9; k = 1, \dots, n_{ij}$
 
-* $n_ij$ denotes the number of cells in individual $i$, batch $j$
+* $n_{ij}$ denotes the number of cells in individual $i$, batch $j$
 
 ```{r mixed_model, eval=FALSE}
 
