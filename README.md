@@ -279,6 +279,7 @@ Library size and number of detected genes depend on overall transcript capture e
 
 It is often convenient/useful to normalize the count table to the cells' library sizes:
 
+
 ```r
 #Normalize for library size (only endogenous genes) and convert to CPMs:
 norm_umi_counts=sweep(umi_counts,2,colSums(umi_counts[endog,]),FUN="/")*1e6 

@@ -978,6 +978,16 @@ How has the topology been altered?
 
 
 
+```{r save_work_image, message=FALSE,echo=FALSE}
+DataList <- list (clean_anno=clean_anno, clean_norm_umi_counts=clean_norm_umi_counts, endog=endog,griph_res=griph_res, PCA_Sel=PCA_Sel) 
+saveRDS(DataList,file="data/2ndDay_DataList.rds")
+```
+<!-- END OF  DAY 1 -->
+
+
+
+
+
 
 ## Testing for differences in mean Gene expression estimates
 
