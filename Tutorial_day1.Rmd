@@ -135,8 +135,12 @@ molecular identifiers (UMIs, see figure below) and ERCC _spike-ins_ were used. T
 Load the data and annotations:
 
 ```{r load_data}
-PATH="/home/radmin/SIB_scRNA-seq_Tutorial_2018/" #Abs Path to ECCB repo in the the ext-fmi machine
+# Abs Path to SIB repo in the the ext-fmi machine
+PATH="/home/radmin/SIB_scRNA-seq_Tutorial_2018/" 
+
+# Path to internal machine
 PATH=""
+
 umi_counts=readRDS(file=paste(PATH, "data/tung/umi_counts.rds",sep=""))
 read_counts=readRDS(file=paste(PATH, "data/tung/read_counts.rds",sep=""))
 anno=readRDS(file=paste(PATH, "data/tung/annotation.rds",sep=""))
