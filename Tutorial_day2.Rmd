@@ -1,0 +1,376 @@
+---
+title: "SIB scRNA-seq Tutorial 2018 Day2"
+date: "`r BiocStyle::doc_date()`"
+output: 
+    BiocStyle::html_document:
+        keep_md: yes
+        toc_float: true
+        md_document:
+        variant: markdown_github
+author:
+- name: Atul Sethi
+  email: atul.sethi@fmi.ch
+- name: Panagiotis Papasaikas
+  email: panagiotis.papasaikas@fmi.ch  
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+```
+
+
+
+# General info
+
+**Course Material and code on github**
+https://github.com/fmicompbio/SIB_scRNA-seq_Tutorial_2018/
+
+
+**Access to the FMI rstudio server**
+
+## Login and navigate to tutorial directory
+On your browser type: 
+
+http://rstudio-ext.fmi.ch
+
+After logging in with your credentials switch working directory by typing:
+
+```{r Switch to tutorial directory, eval=FALSE}
+#Absolute path to SIB_scRNA-seq_Tutorial_2018 repository in the the FMT ext machine
+setwd("/home/radmin/SIB_scRNA-seq_Tutorial_2018/") 
+```
+
+From here on you can run the turorial code by copying and pasting on your console.
+Alternatively you could File -> File Open -> Tutorial_day2.rmd and execute the code directly from the file.
+
+
+# Single Cell Analysis Tutorial Part 2
+
+
+```{r read_worksapce_image, message=FALSE}
+DataList <- readRDS("data/2ndDay_DataList.rds")
+clean_anno=DataList$clean_anno
+clean_norm_umi_counts=DataList$clean_norm_umi_counts
+endog=DataList$endog
+griph_res=DataList$griph_res
+PCA_Sel=DataList$PCA_Sel
+```
+
+## Testing for differences in mean Gene expression estimates
+
+* Single cell experiments generally have a much larger number of samples (i.e. cells) for each group compared to bulk RNA-seq. This enables us to compare different properties of the count distributions founf in cell subpopulations. So, in addition to comparing location estimates for gene expression (e.g means, medians), we can test for differences in dispersion, skewness or overall distribution for individual genes:
+  
+  ![distribution_properties](./figures/Distribution_Differences.png)
+  
+
+
+* However, when compared to bulk RNAseq profiles, single cell measurements have a high dropout rates relative to the non-zero read counts.
+
+```{r rnbiom, message=FALSE}
+set.seed(1)
+hist(rnbinom(1000, mu=10, size=100), col="grey50", xlab="Read Counts", main="Negative Binomial")
+```
+
+```{r zirnbiom, message=FALSE}
+d = 0.5;
+counts <- rnbinom(1000, mu=10, size=100);
+counts[runif(1000) < d] = 0;
+hist(counts, col="grey50", xlab="Read Counts", main="Zero-inflated NB");
+```
+
+* For differential expression, we will look at Wilcox Rank Sum Test and two methods proposed for zero-inflated negative binomial models: [*MAST*](https://bioconductor.org/packages/release/bioc/html/MAST.html) and  [*SCDE*](http://bioconductor.org/packages/release/bioc/html/scde.html).
+
+* For coprehensive comparison of differential gene expression analyses of scRNAseq data:
+[*Bias, robustness and scalability in single-cell differential expression analysis*](https://www.nature.com/articles/nmeth.4612)
+
+Here we perform differentail expression between individual B and C
+
+```{r de_get_data, message=FALSE}
+# Cell Filter
+keep <- clean_anno[,1] == "B" | clean_anno[,1] == "C"
+group <- clean_anno[keep,1]
+batch <- clean_anno[keep,4]
+
+# Gene Filter: expressed in at least 6 cells
+gkeep <- rowSums(clean_norm_umi_counts[,keep] > 0) > 5 &
+  rownames(clean_norm_umi_counts) %in% endog;
+counts <- clean_norm_umi_counts[gkeep,keep]
+```
+
+### Wilcoxon Test
+
+Often described as the non-parametric version of the two-sample t-test, Wilcoxon Rank Sum Test
+assumes that the two samples are independent of one another, and the two populations have equal variance or spread. It does NOT assume that two populations are normally distributed.
+The magnitude of difference in means between groups C and B represents the fold change.
+
+```{r Wilcox, message=FALSE}
+# To speed up analyses we select a random set of 1000 endogenous genes
+set.seed(1)
+gkeep=sample(endog,1000)
+counts1 <- clean_norm_umi_counts[gkeep, keep]
+dim(counts1)
+
+p_val <- sapply(
+    X = 1:nrow(counts1),
+    FUN = function(x) {
+      return(wilcox.test(counts1[x, ] ~ group)$p.value)
+    }
+  )
+p_val <- p.adjust(p_val,method = "BH")
+names(p_val)=rownames(counts1)
+summary(p_val)
+
+# Select the gene with lowest p_val
+selGene <- names(p_val)[order(p_val)][1]
+plotLVis(griph_res, fill.type = clean_norm_umi_counts[selGene,], mark.type = clean_anno[,1])
+```
+The griph plot above shows the expression of gene with lowest p-value for our limited comparison. 
+
+### MAST
+MAST is based on a zero-inflated negative binomial model. It tests for differential expression using a hurdle model to combine tests of discrete (0 vs not zero) and continuous (non-zero values) aspects of gene expression. Again this uses a linear modelling framework to enable complex models to be considered.
+
+We'll fit a hurdle model, modeling the condition and cngeneson factor (NODG), thus adjusting for the cellular detection rate. In order to have more interpretable coefficients, we'll set the reference level of the factor to be the "B" cells.
+
+Since the processing time of these steps can take minutes to hours depending on the number of cells, we will use some precomputed data in the following analyses.
+
+```{r MAST1, message=FALSE}
+library(MAST)
+fData <- data.frame(names=rownames(counts))
+rownames(fData) <- rownames(counts)
+cData <- data.frame(cond=group)
+rownames(cData) <- colnames(counts)
+
+obj <- FromMatrix(as.matrix(log2(counts+1)), cData, fData)
+colData(obj)$cngeneson <- scale(colSums(assay(obj)>0))
+cond <- relevel(colData(obj)$cond,"B")
+colData(obj)$cond <- cond
+
+# Model expression as function of condition & number of detected genes
+# **************** DON'T RUN THIS
+# zlmCond <- zlm(~cond + cngeneson, obj) 
+# saveRDS(zlmCond,paste0(PATH,"data/zlmCond.rds"))
+
+# **************** Load pre-computed data
+zlmCond <- readRDS(paste0(PATH,"data/zlmCond.rds"))
+```
+
+We could run a likelihood ratio test here, testing for differences when we drop the condition factor. Note that any arbitrary contrast matrix can be tested here, and specified either using a matrix or syntactically.
+
+```{r MAST2, message=FALSE}
+# **************** DON'T RUN THIS
+#summaryCond <- summary(zlmCond, doLRT="condC")
+#saveRDS(summaryCond,paste0(PATH,"data/summaryCond.rds"))
+
+# **************** Load pre-computed data
+summaryCond <- readRDS(paste0(PATH,"data/summaryCond.rds"))
+summaryDt   <- summaryCond$datatable
+
+# Merge hurdle P values and logFC coefficients
+fcHurdle <- merge(summaryDt[contrast=='condC' & component=='H',.(primerid, `Pr(>Chisq)`)], 
+                  summaryDt[contrast=='condC' & component=='logFC', .(primerid, coef, ci.hi, ci.lo)], 
+                  by='primerid')
+fcHurdle[,fdr:=p.adjust(`Pr(>Chisq)`, 'fdr')]
+
+fcHurdleSig <- fcHurdle[fdr<.05 & abs(coef)>log2(2)]
+dim(fcHurdleSig)
+data.table::setorder(fcHurdleSig, fdr)
+head(fcHurdleSig)
+```
+
+
+
+## Testing for differences in the distribution of gene expression between subpgroups
+
+```{r KStest, message=FALSE}
+# We will use again the submsampled count matrix (count1) that contains counts for 1000 genes in order to speed up
+# calculations:
+
+KS_p_val <- sapply(
+    X = 1:nrow(counts1),
+    FUN = function(x) {
+      return(suppressWarnings(ks.test(counts1[x,group=="B"],counts1[x,group=="C"]))$p.value)
+    }
+  )
+KS_p_val <- p.adjust(KS_p_val,method = "BH")
+names(KS_p_val)=rownames(counts1)
+summary(KS_p_val)
+
+# Select the gene with low KSp_val but NOT DGE pval:
+KS_p_val.filter=KS_p_val[p_val > 0.01 & !isNA(p_val)]
+selGene <- names(KS_p_val.filter)[order(KS_p_val.filter )][1]
+plotLVis(griph_res, fill.type = clean_norm_umi_counts[selGene,], mark.type = clean_anno[,1])
+
+
+```
+The griph plot above shows the expression of gene with lowest p-value for our limited comparison. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+#### Gene Set Enrichment Analysis
+MAST uses a competitive gene set enrichment test, in which a contrast (hurdle model coefficient) from various gene sets of interest is compared to the background, accounting for the intergene correlation of the module coefficient.
+
+To estimate the intergene correlation of the contrast, MAST uses bootstrapping. Cells are sampled with replacement a number of times and it refits the model. The bootstrapping can be slow (DON'T RUN the following code).
+
+```{r MAST_GSEA_1, message=FALSE, eval=TRUE}
+# Load Hallmark Gene Set (Hs.H) from MSigDB
+load(paste0(PATH,"data/human_H_v5p2.rdata")) 
+names(Hs.H) <- gsub("HALLMARK_","",names(Hs.H))
+tmp <- select(org.Hs.eg.db, keys=unique(unlist(Hs.H)), columns=c("ENSEMBL"), keytype="ENTREZID")
+Hs.H <- lapply(Hs.H, function(x) as.character(tmp[match(x,tmp[,"ENTREZID"]),"ENSEMBL"]))
+
+sets_indices <- limma::ids2indices(Hs.H, rownames(counts))
+
+# Only keep modules with at least 5 genes
+sets_indices <- sets_indices[sapply(sets_indices, length) >= 5]
+
+# **************** DON'T RUN THIS: processing time (5+ hrs) 
+# Bootstrap, resampling cells, R should be set to >50
+# boots <- bootVcov1(zlmCond, R=70)
+# saveRDS(boots,paste0(PATH,"data/boots.rds"))
+# boots <- readRDS(paste0(PATH,"data/boots.rds"))
+# gsea <- gseaAfterBoot(zlmCond, boots, sets_indices, CoefficientHypothesis("condC")) 
+# saveRDS(gsea,paste0(PATH,"data/gsea.rds"))
+# **************** Load pre-computed data
+gsea <- readRDS(paste0(PATH,"data/gsea.rds"))
+
+z_stat_comb <- summary(gsea, testType='normal')
+head(z_stat_comb)
+```
+The summary method returns a data.table with columns giving discrete and continuous Z-scores (disc_Z and cont_Z) and P-values testing if the average coefficient in the gene set differs from the average coefficient outside the set. A combined P-value (using Stouffer's method) is given in column combined_P. The effect sizes (difference in average regression coefficients) is given in effect_disc and effect_cont. For the discrete component this gives, for example, the difference in the average odds of expression in the set vs outside the set.
+
+```{r MAST_GSEA_2, message=FALSE, eval=TRUE}
+sigModules <- z_stat_comb[combined_adj<.05]
+gseaTable <- data.table::melt(sigModules[,.(set, disc_Z, cont_Z, combined_Z)], id.vars='set')
+ggplot(gseaTable, aes(y=set, x=variable, fill=value))+geom_raster() + scale_fill_distiller(palette="PiYG")
+```
+
+
+### SCDE 
+SCDE is the first single-cell specific DE method. It fits a zero-inflated negative binomial model to expression data using Bayesian statistics. The usage below tests for differences in mean expression of individual genes across groups but recent versions include methods to test for differences in mean expression or dispersion of groups of genes, usually representing a pathway.
+
+```{r SCDE, message=FALSE, eval=FALSE}
+# **************** DON'T RUN THIS: processing time (>10 hrs) 
+library(scde)
+cnts <- apply(counts, 2, function(x) { storage.mode(x) <- 'integer'; return(x) } )
+names(group) <- 1:length(group)
+colnames(cnts) <- 1:length(group)
+
+# Fitting error models
+o.ifm <- scde.error.models(counts = cnts, groups = group, 
+                           n.cores = 1, threshold.segmentation = TRUE,
+                           save.crossfit.plots = FALSE, save.model.plots = FALSE,
+                           verbose = 0, min.size.entries = 2)
+
+# Remove particularly poor cells
+valid.cells <- o.ifm$corr.a > 0
+o.ifm <- o.ifm[valid.cells, ]
+
+# Define an expression magnitude prior for the genes
+priors <- scde.expression.prior(models = o.ifm, counts = cnts, 
+                                length.out = 400, show.plot = FALSE )
+
+# Testing for differential expression
+resSCDE <- scde.expression.difference(o.ifm, cnts, priors, groups = group, 
+                                      n.randomizations = 100, n.cores = 1, verbose = 0)
+
+# Top upregulated genes (tail would show top downregulated ones)
+head(resSCDE[order(resSCDE$Z, decreasing  =  TRUE), ])
+
+# Convert Z-scores into 2-tailed p-values
+pVals <- pnorm(abs(resSCDE$cZ), lower.tail = FALSE) * 2
+pVals <- p.adjust(pVals, method = "fdr")
+
+# Correcting for batch effects
+resSCDE.batch <- scde.expression.difference(o.ifm, cnts, priors, groups = group, 
+                                            batch = batch, n.randomizations = 100, 
+                                            n.cores = 1, return.posteriors = TRUE, 
+                                            verbose = 1)
+
+```
+
+
+
+
+
+# Closing remarks and additional resources
+
+There are (too) many topics and issues related to SC-sequencing that go beyond the timing and scope of this tutorial and were thus left untouched. Single-cell sequencing technologies, and perhaps more-so the computational tools for the preprocessing and analysis of the resulting data are still in a state of flux. What is more important, the diversity of SC-technologies and SC-based applications has been increasing at an accelerated rate and will keep doing so for the foreseeable future.  
+
+Any course aiming to cover the expansive landscape of SC-sequencing technologies, computational tools and applications would likely fall short of its mark (all the more so for a 1-day tutorial!). Instead we aimed to convey some of the data characteristics, computational challenges and principles that are commonplace/generalize well to many SC-sequencing applications. 
+
+There are, however, a number of topics that we feel can be of general interest which we could not fit in the context of this tutorial and should not be left unmentioned. 
+In this last section we tried to list these topics and provide links to online material for those wishing to dig into them:
+
+
+
+1. A very comprehensive page with links to a large number of available software, tutorials, apps and papers:
+  + <https://github.com/seandavi/awesome-single-cell>
+
+
+2. Experimental design, batch effects, comparison of protocols and analysis workflows:
+  + <http://www.cell.com/cell/abstract/S0092-8674(15)01353-7>
+  + <https://genomebiology.biomedcentral.com/articles/10.1186/s13059-016-0927-y>
+  + <http://www.nature.com/nmeth/journal/v14/n4/abs/nmeth.4220.html>
+  + <http://www.nature.com/nbt/journal/v34/n11/full/nbt.3721.html>
+  + <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5206706/>
+
+
+3. Unique molecular identifiers, UMI collapse and error correction:
+  + <http://www.nature.com/nmeth/journal/v11/n2/full/nmeth.2772.html>
+  + <https://github.com/CGATOxford/UMI-tools>
+  + <https://hemberg-lab.github.io/scRNA.seq.course/unique-molecular-identifiers-umis.html>
+  + <http://www.nature.com/nmeth/journal/v11/n6/full/nmeth.2930.html>
+  + <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5206706/>
+
+
+4. Data structures for SC data (and how to deal with storage/memory needs efficiently):
+  + <http://peterhickey.org/2017-08-01_Peter_Hickey_JSM.pdf>
+  + <https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/advanced/h5_matrices>
+  + <http://bioconductor.org/packages/release/bioc/html/HDF5Array.html>
+  + <https://bioconductor.org/packages/release/bioc/html/DelayedArray.html>
+
+
+5. Inference of hierarchical structure/lineage from SC data:
+  + <http://www.nature.com/nbt/journal/v35/n6/full/nbt.3854.html>
+  + <https://www.nature.com/nmeth/journal/vaop/ncurrent/full/nmeth.4402.html>
+  + <http://www.nature.com/nrg/journal/v18/n4/full/nrg.2016.159.html>
+  + <https://www.nature.com/ni/journal/v17/n3/full/ni.3344.html>
+  + <http://www.biorxiv.org/content/early/2017/04/19/128843>
+  + <https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-016-1175-6>
+  + <http://www.nature.com/nmeth/journal/v13/n10/full/nmeth.3971.html?WT.feed_name=subjects_rna-sequencing>
+
+
+6. SC medical advances / applications (really too long a list to cover, only some examples):
+  + <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4441954/>
+  + <http://www.sciencedirect.com/science/article/pii/S073497501730040X>
+  + <http://genome.cshlp.org/content/25/10/1499.full>
+  + <http://www.nature.com/nri/journal/vaop/ncurrent/abs/nri.2017.76.html>
+  + <http://www.nature.com/nrg/journal/v17/n8/abs/nrg.2016.67.html>
+  + <https://www.illumina.com/content/dam/illumina-marketing/documents/products/research_reviews/single-cell-sequencing-research-review.pdf>
+
+
+7. Single-cell-based pooled screenings:
+  + <http://www.sciencedirect.com/science/article/pii/S0092867416316105>
+  + <http://www.sciencedirect.com/science/article/pii/S0092867416316609>
+  + <http://www.sciencedirect.com/science/article/pii/S0092867416316117>
+
+
+8. Single-cell epigenomics:
+  + <https://genomebiology.biomedcentral.com/articles/10.1186/s13059-016-0944-x>
+  + <http://www.nature.com/nrg/journal/v16/n12/full/nrg3980.html?foxtrotcallback=true>
+  + <http://databio.org/single_cell_epigenomics.html>
+
+
+
+
+
