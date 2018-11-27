@@ -92,7 +92,7 @@ The development of new methods and protocols for scRNA-seq is currently a very a
 
 Svensson et al, Nature 2018.
 
-**Platform Choice**
+**Platform Choice** 
 
 In a recent study, Ziegenhain et al, Mol Cell 2017 compared different scRNAseq protocols on mouse embryonic stem cells (mESCs). The authors controlled the number of cells and the sequencing depth, thereby enabling them to directly compare the sensitivity, noise-levels and costs of the different protocols. One of the conclusions (image below) illustrates that, for a given detection threshold, the number of detected genes vary between different protocols.
 
