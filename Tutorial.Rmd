@@ -36,7 +36,7 @@ http://rstudio-ext.fmi.ch
 After logging in with your credentials switch working directory by typing:
 
 ```{r Switch to tutorial directory, eval=FALSE}
-#Absolute path to ECCB2018_SC repository in the the FMT ext machine
+#Absolute path to SIB_scRNA-seq_Tutorial_2018 repository in the the FMT ext machine
 setwd("/home/radmin/SIB_scRNA-seq_Tutorial_2018/") 
 ```
 
@@ -979,11 +979,13 @@ How has the topology been altered?
 
 
 
-## Differential Expression Analyses 
+## Testing for differences in mean Gene expression estimates
 
 * Single cell experiments generally have a much larger number of samples (i.e. cells) for each group compared to bulk RNA-seq. This enables us to compare different properties of the count distributions founf in cell subpopulations. So, in addition to comparing location estimates for gene expression (e.g means, medians), we can test for differences in dispersion, skewness or overall distribution for individual genes:
   
   ![distribution_properties](./figures/Distribution_Differences.png)
+  
+
 
 * However, when compared to bulk RNAseq profiles, single cell measurements have a high dropout rates relative to the non-zero read counts.
 
@@ -1026,6 +1028,7 @@ The magnitude of difference in means between groups C and B represents the fold 
 
 ```{r Wilcox, message=FALSE}
 # To speed up analyses we select a random set of 1000 endogenous genes
+set.seed(1)
 gkeep=sample(endog,1000)
 counts1 <- clean_norm_umi_counts[gkeep, keep]
 dim(counts1)
@@ -1037,10 +1040,11 @@ p_val <- sapply(
     }
   )
 p_val <- p.adjust(p_val,method = "BH")
+names(p_val)=rownames(counts1)
 summary(p_val)
 
 # Select the gene with lowest p_val
-selGene <- rownames(counts1)[order(p_val)][1]
+selGene <- names(p_val)[order(p_val)][1]
 plotLVis(griph_res, fill.type = clean_norm_umi_counts[selGene,], mark.type = clean_anno[,1])
 ```
 The griph plot above shows the expression of gene with lowest p-value for our limited comparison. 
@@ -1095,6 +1099,45 @@ dim(fcHurdleSig)
 data.table::setorder(fcHurdleSig, fdr)
 head(fcHurdleSig)
 ```
+
+
+
+## Testing for differences in the distribution of gene expression between subpgroups
+
+```{r KStest, message=FALSE}
+# We will use again the submsampled count matrix (count1) that contains counts for 1000 genes in order to speed up
+# calculations:
+
+KS_p_val <- sapply(
+    X = 1:nrow(counts1),
+    FUN = function(x) {
+      return(suppressWarnings(ks.test(counts1[x,group=="B"],counts1[x,group=="C"]))$p.value)
+    }
+  )
+KS_p_val <- p.adjust(KS_p_val,method = "BH")
+names(KS_p_val)=rownames(counts1)
+summary(KS_p_val)
+
+# Select the gene with low KSp_val but NOT DGE pval:
+KS_p_val.filter=KS_p_val[p_val > 0.01 & !isNA(p_val)]
+selGene <- names(KS_p_val.filter)[order(KS_p_val.filter )][1]
+plotLVis(griph_res, fill.type = clean_norm_umi_counts[selGene,], mark.type = clean_anno[,1])
+
+
+```
+The griph plot above shows the expression of gene with lowest p-value for our limited comparison. 
+
+
+
+
+
+
+
+
+
+
+
+
 
 #### Gene Set Enrichment Analysis
 MAST uses a competitive gene set enrichment test, in which a contrast (hurdle model coefficient) from various gene sets of interest is compared to the background, accounting for the intergene correlation of the module coefficient.
