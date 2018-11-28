@@ -127,14 +127,14 @@ To illustrate the various aspects of SC analysis, we will use a
 The data were generated in [Yoav Gilad](http://giladlab.uchicago.edu/)'s lab at the
 University of Chicago. The experiments were carried out on the
 Fluidigm C1 platform and to facilitate the quantification both unique
-molecular identifiers (UMIs, see figure below) and ERCC _spike-ins_ were used. The data files are located in the `data/tung` folder in the [/home/radmin/ECCB2018_SC] directory .
+molecular identifiers (UMIs, see figure below) and ERCC _spike-ins_ were used. The data files are located in the `data/tung` folder in the [/home/radmin/SIB_scRNA-seq_Tutorial_2018] directory .
 ![UMIs](./figures/UMI-Seq-protocol.png)
 
 
 Load the data and annotations:
 
 ```{r load_data}
-PATH="/home/radmin/SIB_scRNA-seq_Tutorial_2018/" #Abs Path to ECCB repo in the the ext-fmi machine
+#PATH="/home/radmin/SIB_scRNA-seq_Tutorial_2018/" #Abs Path to SIB course repo in the the ext-fmi machine
 PATH=""
 umi_counts=readRDS(file=paste(PATH, "data/tung/umi_counts.rds",sep=""))
 read_counts=readRDS(file=paste(PATH, "data/tung/read_counts.rds",sep=""))
@@ -1009,7 +1009,7 @@ grid.arrange(chart_indiv_pca, chart_indiv_tsne)
 # Identification of meaningful biological cell groupings (clustering) 
 A common task in any SC experiment setting is the identification of cell groupings that encompass biological subtypes. 
 
-As we saw in the previouse section, part of the observed variation is coming from sources that are either not biological (e.g technical batch, library size) or that is biological in nature but trivial and unrelated to the question we want to address (cells in different cell cycle stages or apoptotic vs healthy cells are common examples).
+As we saw in the previous sections, part of the observed variation is coming from sources that are either not biological (e.g technical batch, library size) or that is biological in nature but trivial and unrelated to the question we want to address (cells in different cell cycle stages or apoptotic vs healthy cells are common examples).
 Therefore any clustering approach that fails to account for these unwanted sources of variance **will** produce spurious/trivial cell groupings. 
 
 * One approach to overcome this issue is to explicitly correct for (i.e regress out) unwanted variation. This only applies when the sources of variance are known/can be identified. In addition such approaches come at the risk of overcorrecting and contaminating the data. In the case of unwanted variation that is confounded with the signal of interest these issues can become particularly problematic.
