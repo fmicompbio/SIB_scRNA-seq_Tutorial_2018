@@ -42,7 +42,7 @@ setwd("/home/radmin/SIB_scRNA-seq_Tutorial_2018/")
 ```
 
 From here on you can run the turorial code by copying and pasting on your console.
-Alternatively you could File -> File Open -> Tutorial.rmd and execute the code directly from the file.
+Alternatively you could File -> File Open -> Tutorial_day1.Rmd and execute the code directly from the file.
 
 
 
