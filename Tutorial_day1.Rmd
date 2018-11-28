@@ -66,7 +66,7 @@ knitr::include_graphics("./figures/Why_single_cell.png")
 ## Overview of experimental and computational workflow
 
 **Experimental workflow**
-Preparation of a SC RNA library typically involves:
+Preparation of a SC RNA library typically involves: 
 
 1.  Cell dissociation
 2.  Cell isolation (Microfuidics, Droplet based, Combinatorial labelling, FACS / Laser based / Micromanipulation)
