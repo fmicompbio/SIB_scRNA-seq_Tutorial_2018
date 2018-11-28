@@ -23,28 +23,30 @@ knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
 # General info
 
 **Course Material and code on github**
+
 https://github.com/fmicompbio/SIB_scRNA-seq_Tutorial_2018/
 
 
 **Access to the FMI rstudio server**
 
-## Login and navigate to tutorial directory
-On your browser type: 
+Login and navigate to tutorial directory. On your browser type: 
 
 http://rstudio-ext.fmi.ch
 
 After logging in with your credentials switch working directory by typing:
 
 ```{r Switch to tutorial directory, eval=FALSE}
-#Absolute path to SIB_scRNA-seq_Tutorial_2018 repository in the the FMT ext machine
+# Absolute path to SIB_scRNA-seq_Tutorial_2018 repository in the the FMT ext machine
 setwd("/home/radmin/SIB_scRNA-seq_Tutorial_2018/") 
 ```
+```{r R libs, eval=TRUE}
+# Add R library files 
+.libPaths(c("/home/radmin/R/x86_64-redhat-linux-gnu-library/3.5",.libPaths()))
+```
+
 
 From here on you can run the turorial code by copying and pasting on your console.
 Alternatively you could File -> File Open -> Tutorial_day2.rmd and execute the code directly from the file.
-
-
-# Analysis of differential gene expression
 
 
 Finally we will also load a few packages and functions that will be used during the training:
@@ -65,6 +67,9 @@ griph_res=DataList$griph_res
 PCA_Sel=DataList$PCA_Sel
 ```
 
+
+# Analysis of differential gene expression
+
 ## Testing for differences in mean Gene expression estimates
 
 * Single cell experiments generally have a much larger number of samples (i.e. cells) for each group compared to bulk RNA-seq. This enables us to compare different properties of the count distributions founf in cell subpopulations. So, in addition to comparing location estimates for gene expression (e.g means, medians), we can test for differences in dispersion, skewness or overall distribution for individual genes:
@@ -77,14 +82,20 @@ PCA_Sel=DataList$PCA_Sel
 
 ```{r rnbiom, message=FALSE}
 set.seed(1)
-hist(rnbinom(1000, mu=10, size=100), col="grey50", xlab="Read Counts", main="Negative Binomial")
+hist(rnbinom(1000, mu=10, size=100), 
+     col="grey50", 
+     xlab="Read Counts", 
+     main="Negative Binomial")
 ```
 
 ```{r zirnbiom, message=FALSE}
 d = 0.5;
 counts <- rnbinom(1000, mu=10, size=100);
 counts[runif(1000) < d] = 0;
-hist(counts, col="grey50", xlab="Read Counts", main="Zero-inflated NB");
+hist(counts, 
+     col="grey50", 
+     xlab="Read Counts", 
+     main="Zero-inflated NB");
 ```
 
 * For differential expression, we will look at Wilcox Rank Sum Test and two methods proposed for zero-inflated negative binomial models: [*MAST*](https://bioconductor.org/packages/release/bioc/html/MAST.html) and  [*SCDE*](http://bioconductor.org/packages/release/bioc/html/scde.html).
@@ -131,7 +142,9 @@ summary(p_val)
 
 # Select the gene with lowest p_val
 selGene <- names(p_val)[order(p_val)][1]
-plotLVis(griph_res, fill.type = clean_norm_umi_counts[selGene,], mark.type = clean_anno[,1])
+plotLVis(griph_res, 
+         fill.type = clean_norm_umi_counts[selGene,], 
+         mark.type = clean_anno[,1])
 ```
 The griph plot above shows the expression of gene with lowest p-value for our limited comparison. 
 
@@ -175,9 +188,13 @@ summaryCond <- readRDS(paste0(PATH,"data/summaryCond.rds"))
 summaryDt   <- summaryCond$datatable
 
 # Merge hurdle P values and logFC coefficients
-fcHurdle <- merge(summaryDt[contrast=='condC' & component=='H',.(primerid, `Pr(>Chisq)`)], 
-                  summaryDt[contrast=='condC' & component=='logFC', .(primerid, coef, ci.hi, ci.lo)], 
-                  by='primerid')
+fcHurdle <- merge(
+  summaryDt[contrast=='condC' & component=='H',.
+            (primerid, `Pr(>Chisq)`)], 
+  summaryDt[contrast=='condC' & component=='logFC', 
+            .(primerid, coef, ci.hi, ci.lo)], 
+  by='primerid')
+
 fcHurdle[,fdr:=p.adjust(`Pr(>Chisq)`, 'fdr')]
 
 fcHurdleSig <- fcHurdle[fdr<.05 & abs(coef)>log2(2)]
@@ -190,14 +207,17 @@ head(fcHurdleSig)
 
 ## Testing for differences in the distribution of gene expression between subpgroups
 
+The two-sample Kolmogorov–Smirnov test is one of the most useful and general nonparametric methods for comparing two samples, as it is sensitive to differences in both location and shape of the empirical cumulative distribution functions of the two samples.
+
 ```{r KStest, message=FALSE}
-# We will use again the submsampled count matrix (count1) that contains counts for 1000 genes in order to speed up
-# calculations:
+# We will use again the submsampled count matrix (count1) that contains counts for 1000 genes in order to speed up calculations:
 
 KS_p_val <- sapply(
     X = 1:nrow(counts1),
     FUN = function(x) {
-      return(suppressWarnings(ks.test(counts1[x,group=="B"],counts1[x,group=="C"]))$p.value)
+      return(suppressWarnings(
+        ks.test(counts1[x,group=="B"],
+                counts1[x,group=="C"]))$p.value)
     }
   )
 KS_p_val <- p.adjust(KS_p_val,method = "BH")
@@ -208,19 +228,8 @@ summary(KS_p_val)
 KS_p_val.filter=KS_p_val[p_val > 0.01 & !isNA(p_val)]
 selGene <- names(KS_p_val.filter)[order(KS_p_val.filter )][1]
 plotLVis(griph_res, fill.type = clean_norm_umi_counts[selGene,], mark.type = clean_anno[,1])
-
-
 ```
 The griph plot above shows the expression of gene with lowest p-value for our limited comparison. 
-
-
-
-
-
-
-
-
-
 
 
 
@@ -260,8 +269,12 @@ The summary method returns a data.table with columns giving discrete and continu
 
 ```{r MAST_GSEA_2, message=FALSE, eval=TRUE}
 sigModules <- z_stat_comb[combined_adj<.05]
-gseaTable <- data.table::melt(sigModules[,.(set, disc_Z, cont_Z, combined_Z)], id.vars='set')
-ggplot(gseaTable, aes(y=set, x=variable, fill=value))+geom_raster() + scale_fill_distiller(palette="PiYG")
+gseaTable <- data.table::melt(
+  sigModules[,.(set, disc_Z, cont_Z, combined_Z)], 
+  id.vars='set')
+ggplot(gseaTable, aes(y=set, x=variable, fill=value)) + 
+  geom_raster() + 
+  scale_fill_distiller(palette="PiYG")
 ```
 
 
@@ -271,27 +284,31 @@ SCDE is the first single-cell specific DE method. It fits a zero-inflated negati
 ```{r SCDE, message=FALSE, eval=FALSE}
 # **************** DON'T RUN THIS: processing time (>10 hrs) 
 library(scde)
-cnts <- apply(counts, 2, function(x) { storage.mode(x) <- 'integer'; return(x) } )
+cnts <- apply(counts, 2, function(x) { 
+  storage.mode(x) <- 'integer'; return(x) 
+  })
 names(group) <- 1:length(group)
 colnames(cnts) <- 1:length(group)
 
 # Fitting error models
-o.ifm <- scde.error.models(counts = cnts, groups = group, 
-                           n.cores = 1, threshold.segmentation = TRUE,
-                           save.crossfit.plots = FALSE, save.model.plots = FALSE,
-                           verbose = 0, min.size.entries = 2)
+o.ifm <- scde.error.models(
+  counts = cnts, groups = group, n.cores = 1, 
+  threshold.segmentation = TRUE, save.crossfit.plots = FALSE, 
+  save.model.plots = FALSE, verbose = 0, min.size.entries = 2)
 
 # Remove particularly poor cells
 valid.cells <- o.ifm$corr.a > 0
 o.ifm <- o.ifm[valid.cells, ]
 
 # Define an expression magnitude prior for the genes
-priors <- scde.expression.prior(models = o.ifm, counts = cnts, 
-                                length.out = 400, show.plot = FALSE )
+priors <- scde.expression.prior(
+  models = o.ifm, counts = cnts, 
+  length.out = 400, show.plot = FALSE )
 
 # Testing for differential expression
-resSCDE <- scde.expression.difference(o.ifm, cnts, priors, groups = group, 
-                                      n.randomizations = 100, n.cores = 1, verbose = 0)
+resSCDE <- scde.expression.difference(
+  o.ifm, cnts, priors, groups = group, 
+  n.randomizations = 100, n.cores = 1, verbose = 0)
 
 # Top upregulated genes (tail would show top downregulated ones)
 head(resSCDE[order(resSCDE$Z, decreasing  =  TRUE), ])
@@ -301,15 +318,199 @@ pVals <- pnorm(abs(resSCDE$cZ), lower.tail = FALSE) * 2
 pVals <- p.adjust(pVals, method = "fdr")
 
 # Correcting for batch effects
-resSCDE.batch <- scde.expression.difference(o.ifm, cnts, priors, groups = group, 
-                                            batch = batch, n.randomizations = 100, 
-                                            n.cores = 1, return.posteriors = TRUE, 
-                                            verbose = 1)
+resSCDE.batch <- scde.expression.difference(
+  o.ifm, cnts, priors, groups = group, batch = batch, 
+  n.randomizations = 100, n.cores = 1, 
+  return.posteriors = TRUE, verbose = 1)
 
 ```
 
 
+# Pseudotime Analyses
 
+What is pseudotime?
+
+* Pseudotime is an abstract unit of progress.
+
+* Pseudotime analyses is required when one wants to study a process where cells change continuously, e.g. differentiation processes during development, changes in cells over a time period following a stimulus.
+
+* Simply put, distance between a cell and the start of the trajectory, measured along the shortest path.
+
+* The trajectory's total length is defined in terms of the total amount of transcriptional change that a cell undergoes as it moves from the starting state to the end state.
+
+
+
+Why do we need pseudotime analyses?
+
+* To extract RNA, cells need to be lysed. So we cannot monitor gene expression levels in individual cell over time.
+
+* By sampling at multiple time-points, we can obtain snapshots of the gene expression profiles.
+
+* In many biological processes, cells do not progress in perfect synchrony. Some of the cells will proceed faster along the differentiation than others.
+
+* Instead of tracking changes in expression as a function of time, we can track underlying developmental trajectories as a function of progress along the trajectory - which we call pseudotime.
+
+
+Which methods are suitable to construct these trajectories?
+
+* Today we will use 2 methods: [*Monocle*](http://cole-trapnell-lab.github.io/monocle-release/) and [*Destiny*](https://bioconductor.org/packages/release/bioc/html/destiny.html).
+
+* For more comprehensive overview of methods suiyable for trajectory recontruction, refer to [*Cannoodt et al, 2016*](https://www.ncbi.nlm.nih.gov/pubmed/27682842)
+
+
+What data will we use?
+
+* [*Deng et al 2014*](https://www.ncbi.nlm.nih.gov/pubmed/24408435) dataset consiting of 268 cells from 10 different time-points of early mouse development.
+![Deng Dataset](./figures/deng_celltypes.jpg)
+
+* Strictly speaking, there is no need for pseudotime alignment in this case as the cell labels provide information about the development trajectory. 
+
+* We will use the labels to establish a ground truth to evaluate and compare the different methods.
+
+
+The data has been preprocessed and saved as a *SingleCellExperiment* object. The cells are annotated with cell types identified in the original publication (column cell_type2 in the colData slot).
+
+```{r }
+# Read in Deng data
+deng <- readRDS("data/deng/deng-reads.rds")
+deng
+```
+
+
+Let's look at the cell type annotation:
+  
+```{r }
+deng$cell_type2 <- factor(
+  deng$cell_type2,
+  levels = c("zy", "early2cell", "mid2cell", "late2cell", 
+             "4cell", "8cell", "16cell", 
+             "earlyblast", "midblast", "lateblast"))
+cellLabels <- deng$cell_type2
+deng.counts <- counts(deng)
+deng.counts <- t(t(deng.counts) / colSums(deng.counts) * 1e6)
+colnames(deng.counts) <- cellLabels
+```
+
+
+Let us take a first look at the Deng data, without yet applying sophisticated pseudotime methods. As the plot below shows, simple PCA does a very good job of displaying the structure in these data. It is only once we reach the blast cell types (*earlyblast*, *midblast*, *lateblast*) that PCA struggles to separate the distinct cell types.
+
+```{r PCA_selection_plot1}
+pc <- prcomp(t(logcounts(deng)))
+datt=data.frame(cellLabels=cellLabels,PCA=pc$x[,1:2])  
+ggplot(datt,aes(x=PCA.PC1,y=PCA.PC2,color=cellLabels)) + 
+  geom_point(size=4,alpha=0.8)
+```
+
+
+## Monocle (Minimum spanning trees)
+
+Monocle builds a minimum spanning tree on a reduced dimension representation of the cells to connect all cells. Monocle then identifies the longest path in this tree to determine pseudotime. If the data contains diverging trajectories (i.e. one cell type differentiates into two different cell-types), monocle can identify these. Each of the resulting forked paths is defined as a separate cell state. Unfortunately, Monocle does not work when all the genes are used, so we must carry out feature selection. So first, we use select highly variable genes:
+
+```{r monocle1, eval=FALSE}
+# Select highly variable genes
+genes_keep <- select_variable_genes(deng.counts,0.25)
+genes_keep <- 1:dim(deng.counts)[1]
+d <- deng.counts[genes_keep, ]
+d <- d[!duplicated(rownames(d)), ]
+
+# Running monocle
+colnames(d) <- 1:ncol(d)
+geneNames <- rownames(d)
+rownames(d) <- 1:nrow(d)
+pd <- data.frame(timepoint = cellLabels)
+pd <- new("AnnotatedDataFrame", data=pd)
+fd <- data.frame(gene_short_name = geneNames)
+fd <- new("AnnotatedDataFrame", data=fd)
+
+# store the ordering on cells
+dCellData <- newCellDataSet(d, phenoData = pd, 
+                            featureData = fd, 
+                            expressionFamily = tobit())
+dCellData <- setOrderingFilter(dCellData, genes_keep)
+dCellData <- estimateSizeFactors(dCellData)
+dCellDataSet <- reduceDimension(dCellData, pseudo_expr = 1)
+dCellDataSet <- orderCells(dCellDataSet, reverse = FALSE)
+saveRDS(dCellDataSet,"data/monocle.RDS")
+```
+
+```{r monocle1saved, eval=TRUE, echo=FALSE}
+dCellDataSet <- readRDS("data/monocle.RDS")
+```
+
+
+Let's look at the trajectory with inferred states:
+
+```{r monocle_plot_by_state}
+plot_cell_trajectory(dCellDataSet, color_by = "State")
+```
+
+
+Let's look at the trajectory with known timepoints:
+
+```{r monocle_plot_by_timepoint}
+plot_cell_trajectory(dCellDataSet, color_by = "timepoint")
+```
+
+
+Let's cells along monocole pseudotime vs timepoint
+
+```{r monocle2}
+pseudotime_monocle <- data.frame( 
+  Timepoint = phenoData(dCellDataSet)$timepoint,
+  pseudotime = phenoData(dCellDataSet)$Pseudotime,
+  State = phenoData(dCellDataSet)$State
+)
+rownames(pseudotime_monocle) <- 1:ncol(dCellDataSet)
+pseudotime_order_monocle <-
+  rownames(pseudotime_monocle[order(pseudotime_monocle$pseudotime), ])
+
+deng$pseudotime_monocle <- pseudotime_monocle$pseudotime
+ggplot(as.data.frame(colData(deng)), 
+       aes(x = pseudotime_monocle, 
+           y = cell_type2, colour = cell_type2)) +
+  geom_quasirandom(groupOnX = FALSE) +
+  theme_classic() +
+  xlab("monocle pseudotime") + ylab("Timepoint") +
+  ggtitle("Cells ordered by monocle pseudotime")
+```
+
+
+## Destiny (Diffusion Maps)
+
+Diffusion maps are a spectral method for non-linear dimension reduction introduced by [*Coifman et al. 2005*](http://www.pnas.org/content/102/21/7426). They are based on a distance metric (diffusion distance) which is conceptually relevant to how differentiating cells follow noisy diffusion-like dynamics, moving from a pluripotent state towards more differentiated states. 
+
+There are multile implementations diffusion maps in R, including package [*Destiny*](https://bioconductor.org/packages/release/bioc/html/destiny.html). The function `DiffusionMap` in package `Destiny` is suited for analyzing large single-cell gene expression data from time-course experiments (up to 300,000 cells)
+
+```{r Destiny1}
+deng.counts <- logcounts(deng)
+colnames(deng.counts) <- cellLabels
+dm <- DiffusionMap(t(deng.counts))
+
+tmp <- data.frame(DC1 = eigenvectors(dm)[,1],
+                  DC2 = eigenvectors(dm)[,2],
+                  Timepoint = deng$cell_type2)
+ggplot(tmp, aes(x = DC1, y = DC2, colour = Timepoint)) +
+  geom_point() + #scale_color_tableau() + 
+  xlab("Diffusion component 1") + 
+  ylab("Diffusion component 2") +
+  theme_classic()
+```
+
+
+Let's cells along destiny pseudotime vs timepoint
+
+
+```{r Destiny2}
+deng$pseudotime_diffusionmap <- rank(eigenvectors(dm)[,1])
+ggplot(as.data.frame(colData(deng)), 
+       aes(x = pseudotime_diffusionmap, 
+           y = cell_type2, colour = cell_type2)) +
+  geom_quasirandom(groupOnX = FALSE) +
+  theme_classic() +
+  xlab("Diffusion map pseudotime (first diffusion map component)") +
+  ylab("Timepoint") +
+  ggtitle("Cells ordered by diffusion map pseudotime")
+```
 
 
 # Closing remarks and additional resources
