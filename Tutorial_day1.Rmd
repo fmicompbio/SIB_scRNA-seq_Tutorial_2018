@@ -39,7 +39,8 @@ After logging in with your credentials switch working directory by typing:
 ```{r Switch to tutorial directory, eval=FALSE}
 # Absolute path to SIB_scRNA-seq_Tutorial_2018 repository in the the FMT ext machine
 setwd("/home/radmin/SIB_scRNA-seq_Tutorial_2018/") 
-
+```
+```{r R libs, eval=TRUE}
 # Add R library files 
 .libPaths(c("/home/radmin/R/x86_64-redhat-linux-gnu-library/3.5",.libPaths()))
 ```
