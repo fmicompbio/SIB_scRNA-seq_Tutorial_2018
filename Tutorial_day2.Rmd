@@ -547,7 +547,7 @@ head(reducedDim(sce, "LVis")[,1:2])
 
 
 ## Sparse Matrices
-The main idea behind sparse matrix represenations, is that if your data is sparse, i.e., there are many zero entries in your data, then a naive data.frame or matrix will consume memory for all these zeroes. If, however, you have many recurring zeroes, it is more efficient to save only the non-zero entries.
+The main idea behind sparse matrix representations, is that if your data is sparse, i.e., there are many zero entries in your data, then a naive data.frame or matrix will consume memory for all these zeroes. If, however, you have many recurring zeroes, it is more efficient to save only the non-zero entries.
 In addition to memory benefits sparse matrix representations come with significant computational speed benefits. Several matrix operations have specific implementations that take advantage of the sparse matrix representation to speed-up calculations.
 The sparse matrix represenation that we will discuss comes from the Matrix package:
 https://cran.r-project.org/web/packages/Matrix/index.html
@@ -556,6 +556,8 @@ https://cran.r-project.org/web/packages/Matrix/index.html
 
 ```{r SparseMatrix}  
 clean_norm_umi_counts.sparse <- Matrix(clean_norm_umi_counts,sparse=TRUE)
+
+head(clean_norm_umi_counts.sparse)
 
 nnzero(clean_norm_umi_counts.sparse) #Number of non zero elements
 
