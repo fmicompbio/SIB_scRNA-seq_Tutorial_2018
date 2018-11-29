@@ -557,7 +557,7 @@ https://cran.r-project.org/web/packages/Matrix/index.html
 ```{r SparseMatrix}  
 clean_norm_umi_counts.sparse <- Matrix(clean_norm_umi_counts,sparse=TRUE)
 
-head(clean_norm_umi_counts.sparse[,1:5])
+head(clean_norm_umi_counts.sparse[,1:4])
 
 nnzero(clean_norm_umi_counts.sparse) #Number of non zero elements
 

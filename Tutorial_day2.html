@@ -690,15 +690,15 @@ reducedDims(sce)</code></pre>
 <p>The main idea behind sparse matrix representations, is that if your data is sparse, i.e., there are many zero entries in your data, then a naive data.frame or matrix will consume memory for all these zeroes. If, however, you have many recurring zeroes, it is more efficient to save only the non-zero entries. In addition to memory benefits sparse matrix representations come with significant computational speed benefits. Several matrix operations have specific implementations that take advantage of the sparse matrix representation to speed-up calculations. The sparse matrix represenation that we will discuss comes from the Matrix package: <a href="https://cran.r-project.org/web/packages/Matrix/index.html" class="uri">https://cran.r-project.org/web/packages/Matrix/index.html</a></p>
 <pre class="r"><code>clean_norm_umi_counts.sparse &lt;- Matrix(clean_norm_umi_counts,sparse=TRUE)
 
-head(clean_norm_umi_counts.sparse[,1:5])</code></pre>
-<pre><code>## 6 x 5 sparse Matrix of class &quot;dgCMatrix&quot;
-##                 A.r1.A01 A.r1.A02 A.r1.A03 A.r1.A04 A.r1.A05
-## ENSG00000237683  .        .        .       18.98182  .      
-## ENSG00000187634  .        .        .        .        .      
-## ENSG00000188976 48.28197 95.69531 23.52443 56.94545 57.45063
-## ENSG00000187961  .        .        .        .        .      
-## ENSG00000187583  .        .        .        .        .      
-## ENSG00000187642  .        .        .        .        .</code></pre>
+head(clean_norm_umi_counts.sparse[,1:4])</code></pre>
+<pre><code>## 6 x 4 sparse Matrix of class &quot;dgCMatrix&quot;
+##                 A.r1.A01 A.r1.A02 A.r1.A03 A.r1.A04
+## ENSG00000237683  .        .        .       18.98182
+## ENSG00000187634  .        .        .        .      
+## ENSG00000188976 48.28197 95.69531 23.52443 56.94545
+## ENSG00000187961  .        .        .        .      
+## ENSG00000187583  .        .        .        .      
+## ENSG00000187642  .        .        .        .</code></pre>
 <pre class="r"><code>nnzero(clean_norm_umi_counts.sparse) #Number of non zero elements</code></pre>
 <pre><code>## [1] 6990485</code></pre>
 <pre class="r"><code># &quot;Compression Level&quot;
@@ -709,10 +709,10 @@ length(clean_norm_umi_counts)/nnzero(clean_norm_umi_counts.sparse) </code></pre>
 <pre class="r"><code># Calculation speed-ups
 system.time(sapply(1:100, function(x){ sum(clean_norm_umi_counts)  } )  )</code></pre>
 <pre><code>##    user  system elapsed 
-##   1.865   0.001   1.865</code></pre>
+##   1.785   0.000   1.786</code></pre>
 <pre class="r"><code>system.time(sapply(1:100, function(x){ sum(clean_norm_umi_counts.sparse)  } )  )</code></pre>
 <pre><code>##    user  system elapsed 
-##   0.839   0.001   0.839</code></pre>
+##   0.855   0.000   0.856</code></pre>
 </div>
 </div>
 <div id="closing-remarks-and-additional-resources" class="section level1">
