@@ -672,7 +672,38 @@ head(sizeFactors(sce))</code></pre>
 <pre><code>## A.r1.A01 A.r1.A02 A.r1.A03 A.r1.A04 A.r1.A05 A.r1.A06 
 ##  1019104  1020367  1026371  1023537  1018126  1019598</code></pre>
 <pre class="r"><code>#Add low dimensional representations:
-reducedDims(sce) &lt;- list(LVis=griph_res$plotLVis)</code></pre>
+reducedDims(sce) &lt;- list(LVis=griph_res$plotLVis)
+reducedDims(sce)</code></pre>
+<pre><code>## List of length 1
+## names(1): LVis</code></pre>
+<pre class="r"><code>head(reducedDim(sce, &quot;LVis&quot;)[,1:2])</code></pre>
+<pre><code>##                  x        y
+## A.r1.A01 -32.57110 6.715776
+## A.r1.A02 -32.94709 5.568071
+## A.r1.A03 -31.48385 8.675279
+## A.r1.A04 -31.62438 7.806304
+## A.r1.A05 -34.41636 6.850896
+## A.r1.A06 -35.04548 9.230111</code></pre>
+</div>
+<div id="sparse-matrices" class="section level2">
+<h2><span class="header-section-number">4.2</span> Sparse Matrices</h2>
+<p>The main idea behind sparse matrix represenations, is that if your data is sparse, i.e., there are many zero entries in your data, then a naive data.frame or matrix will consume memory for all these zeroes. If, however, you have many recurring zeroes, it is more efficient to save only the non-zero entries. In addition to memory benefits sparse matrix representations come with significant computational speed benefits. Several matrix operations have specific implementations that take advantage of the sparse matrix representation to speed-up calculations. The sparse matrix represenation that we will discuss comes from the Matrix package: <a href="https://cran.r-project.org/web/packages/Matrix/index.html" class="uri">https://cran.r-project.org/web/packages/Matrix/index.html</a></p>
+<pre class="r"><code>clean_norm_umi_counts.sparse &lt;- Matrix(clean_norm_umi_counts,sparse=TRUE)
+
+nnzero(clean_norm_umi_counts.sparse) #Number of non zero elements</code></pre>
+<pre><code>## [1] 6990485</code></pre>
+<pre class="r"><code># &quot;Compression Level&quot;
+length(clean_norm_umi_counts)/nnzero(clean_norm_umi_counts.sparse) </code></pre>
+<pre><code>## [1] 2.198812</code></pre>
+<pre class="r"><code>as.numeric(object.size(clean_norm_umi_counts))/as.numeric(object.size(clean_norm_umi_counts.sparse))</code></pre>
+<pre><code>## [1] 1.458111</code></pre>
+<pre class="r"><code># Calculation speed-up
+system.time(sapply(1:100, function(x){ sum(clean_norm_umi_counts)  } )  )</code></pre>
+<pre><code>##    user  system elapsed 
+##   1.793   0.000   1.793</code></pre>
+<pre class="r"><code>system.time(sapply(1:100, function(x){ sum(clean_norm_umi_counts.sparse)  } )  )</code></pre>
+<pre><code>##    user  system elapsed 
+##   0.831   0.000   0.831</code></pre>
 </div>
 </div>
 <div id="closing-remarks-and-additional-resources" class="section level1">

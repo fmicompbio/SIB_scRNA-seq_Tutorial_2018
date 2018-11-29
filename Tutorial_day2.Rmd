@@ -540,9 +540,35 @@ head(sizeFactors(sce))
      
 #Add low dimensional representations:
 reducedDims(sce) <- list(LVis=griph_res$plotLVis)
+reducedDims(sce)
+head(reducedDim(sce, "LVis")[,1:2])
 
 ```
 
+
+## Sparse Matrices
+The main idea behind sparse matrix represenations, is that if your data is sparse, i.e., there are many zero entries in your data, then a naive data.frame or matrix will consume memory for all these zeroes. If, however, you have many recurring zeroes, it is more efficient to save only the non-zero entries.
+In addition to memory benefits sparse matrix representations come with significant computational speed benefits. Several matrix operations have specific implementations that take advantage of the sparse matrix representation to speed-up calculations.
+The sparse matrix represenation that we will discuss comes from the Matrix package:
+https://cran.r-project.org/web/packages/Matrix/index.html
+
+
+
+```{r SparseMatrix}  
+clean_norm_umi_counts.sparse <- Matrix(clean_norm_umi_counts,sparse=TRUE)
+
+nnzero(clean_norm_umi_counts.sparse) #Number of non zero elements
+
+# "Compression Level"
+length(clean_norm_umi_counts)/nnzero(clean_norm_umi_counts.sparse) 
+as.numeric(object.size(clean_norm_umi_counts))/as.numeric(object.size(clean_norm_umi_counts.sparse))
+
+# Calculation speed-up
+system.time(sapply(1:100, function(x){ sum(clean_norm_umi_counts)  } )  )
+system.time(sapply(1:100, function(x){ sum(clean_norm_umi_counts.sparse)  } )  )
+
+
+```
 
 
 
