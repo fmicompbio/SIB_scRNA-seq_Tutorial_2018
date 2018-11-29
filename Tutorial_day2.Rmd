@@ -150,7 +150,7 @@ plotLVis(griph_res,
 The griph plot above shows the expression of gene with lowest p-value for our limited comparison. 
 
 
-## Kolmogorov–Smirnov test
+## Kolmogorov–Smirnov test 
 
 The two-sample Kolmogorov–Smirnov test is one of the most useful and general nonparametric methods for comparing two samples, as it is sensitive to differences in both location and shape of the empirical cumulative distribution functions of the two samples.
 
