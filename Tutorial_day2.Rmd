@@ -98,12 +98,15 @@ hist(counts,
      main="Zero-inflated NB");
 ```
 
-* For differential expression, we will look at Wilcox Rank Sum Test and two methods proposed for zero-inflated negative binomial models: [*MAST*](https://bioconductor.org/packages/release/bioc/html/MAST.html) and  [*SCDE*](http://bioconductor.org/packages/release/bioc/html/scde.html).
+* For differential expression, we will look at Wilcox Rank Sum Test, Kolmogorov–Smirnov two sample test, and two methods proposed for zero-inflated negative binomial models: [*MAST*](https://bioconductor.org/packages/release/bioc/html/MAST.html) and  [*SCDE*](http://bioconductor.org/packages/release/bioc/html/scde.html).
 
 * For coprehensive comparison of differential gene expression analyses of scRNAseq data:
 [*Bias, robustness and scalability in single-cell differential expression analysis*](https://www.nature.com/articles/nmeth.4612)
 
-Here we perform differentail expression between individual B and C
+![Summary of DE method performance across all major evaluation criteria. Methods are ranked by their average performance across the criteria, with the numerical encoding good = 2, intermediate = 1, poor = 0.](./figures/Soneson_DE.jpg)
+
+
+To keep things simple we first subset the dat to Here we perform differentail expression between individual B and C
 
 ```{r de_get_data, message=FALSE}
 # Cell Filter
@@ -117,11 +120,9 @@ gkeep <- rowSums(clean_norm_umi_counts[,keep] > 0) > 5 &
 counts <- clean_norm_umi_counts[gkeep,keep]
 ```
 
-### Wilcoxon Test
+### Wilcoxon Rank Sum Test
 
-Often described as the non-parametric version of the two-sample t-test, Wilcoxon Rank Sum Test
-assumes that the two samples are independent of one another, and the two populations have equal variance or spread. It does NOT assume that two populations are normally distributed.
-The magnitude of difference in means between groups C and B represents the fold change.
+Often described as the non-parametric version of the two-sample t-test, Wilcoxon Rank Sum Test assumes that the two samples are independent of one another, and the two populations have equal variance or spread. It does NOT assume that two populations are normally distributed. The magnitude of difference in means between groups C and B represents the fold change.
 
 ```{r Wilcox, message=FALSE}
 # To speed up analyses we select a random set of 1000 endogenous genes
@@ -130,23 +131,54 @@ gkeep=sample(endog,1000)
 counts1 <- clean_norm_umi_counts[gkeep, keep]
 dim(counts1)
 
-p_val <- sapply(
+W_p_val <- sapply(
     X = 1:nrow(counts1),
     FUN = function(x) {
       return(wilcox.test(counts1[x, ] ~ group)$p.value)
     }
   )
-p_val <- p.adjust(p_val,method = "BH")
-names(p_val)=rownames(counts1)
-summary(p_val)
+W_p_val <- p.adjust(W_p_val,method = "BH")
+names(W_p_val)=rownames(counts1)
+summary(W_p_val)
 
-# Select the gene with lowest p_val
-selGene <- names(p_val)[order(p_val)][1]
+# Select the gene with lowest W_p_val
+selGene <- names(W_p_val)[order(W_p_val)][1]
 plotLVis(griph_res, 
          fill.type = clean_norm_umi_counts[selGene,], 
          mark.type = clean_anno[,1])
 ```
 The griph plot above shows the expression of gene with lowest p-value for our limited comparison. 
+
+
+## Kolmogorov–Smirnov test
+
+The two-sample Kolmogorov–Smirnov test is one of the most useful and general nonparametric methods for comparing two samples, as it is sensitive to differences in both location and shape of the empirical cumulative distribution functions of the two samples.
+
+```{r KStest, message=FALSE}
+# We will use again the submsampled count matrix (count1) that contains counts for 1000 genes in order to speed up calculations:
+
+KS_p_val <- sapply(
+    X = 1:nrow(counts1),
+    FUN = function(x) {
+      return(suppressWarnings(
+        ks.test(counts1[x,group=="B"],
+                counts1[x,group=="C"]))$p.value)
+    }
+  )
+KS_p_val <- p.adjust(KS_p_val,method = "BH")
+names(KS_p_val)=rownames(counts1)
+summary(KS_p_val)
+
+# Select the gene with low KSp_val but NOT DGE W_pval:
+KS_p_val.filter=KS_p_val[W_p_val > 0.01 & !isNA(W_p_val)]
+selGene <- names(KS_p_val.filter)[order(KS_p_val.filter )][1]
+plotLVis(griph_res, fill.type = clean_norm_umi_counts[selGene,], mark.type = clean_anno[,1])
+```
+The griph plot above shows the expression of gene with lowest p-value for our limited comparison. 
+
+
+
+
 
 ### MAST
 MAST is based on a zero-inflated negative binomial model. It tests for differential expression using a hurdle model to combine tests of discrete (0 vs not zero) and continuous (non-zero values) aspects of gene expression. Again this uses a linear modelling framework to enable complex models to be considered.
@@ -202,35 +234,6 @@ dim(fcHurdleSig)
 data.table::setorder(fcHurdleSig, fdr)
 head(fcHurdleSig)
 ```
-
-
-
-## Testing for differences in the distribution of gene expression between subpgroups
-
-The two-sample Kolmogorov–Smirnov test is one of the most useful and general nonparametric methods for comparing two samples, as it is sensitive to differences in both location and shape of the empirical cumulative distribution functions of the two samples.
-
-```{r KStest, message=FALSE}
-# We will use again the submsampled count matrix (count1) that contains counts for 1000 genes in order to speed up calculations:
-
-KS_p_val <- sapply(
-    X = 1:nrow(counts1),
-    FUN = function(x) {
-      return(suppressWarnings(
-        ks.test(counts1[x,group=="B"],
-                counts1[x,group=="C"]))$p.value)
-    }
-  )
-KS_p_val <- p.adjust(KS_p_val,method = "BH")
-names(KS_p_val)=rownames(counts1)
-summary(KS_p_val)
-
-# Select the gene with low KSp_val but NOT DGE pval:
-KS_p_val.filter=KS_p_val[p_val > 0.01 & !isNA(p_val)]
-selGene <- names(KS_p_val.filter)[order(KS_p_val.filter )][1]
-plotLVis(griph_res, fill.type = clean_norm_umi_counts[selGene,], mark.type = clean_anno[,1])
-```
-The griph plot above shows the expression of gene with lowest p-value for our limited comparison. 
-
 
 
 
@@ -511,6 +514,38 @@ ggplot(as.data.frame(colData(deng)),
   ylab("Timepoint") +
   ggtitle("Cells ordered by diffusion map pseudotime")
 ```
+
+
+# Data Structures for Single Cell Experiments
+
+## SingleCellEXperiment 
+
+The SingleCellExperiment class (http://bioconductor.org/packages/release/bioc/vignettes/SingleCellExperiment/) is a light-weight container for single-cell genomics data. It extends the RangedSummarizedExperiment class and follows similar conventions, i.e., rows should represent features (genes, transcripts, genomic regions) and columns should represent cells. In addition to the slots already present in the RangedSummarizedExperiment, the SingleCellExperiment class contains:
+
+   + int_elementMetadata, to hold internal metadata for each row.
+   + int_colData, to hold internal metadata for each column.
+   + int_metadata, to hold internal metadata for the entire object.
+   + reducedDims, to hold dimensionality reduction results.
+
+```{r SCE}   
+sce <- SingleCellExperiment(assays = list(counts = clean_norm_umi_counts, logcounts=log2(clean_norm_umi_counts+1)))
+#Specify spike ins
+isSpike(sce, "ERCC") <- grepl("^ERCC-", rownames(sce))
+sce
+table(isSpike(sce, "ERCC"))
+spikeNames(sce)
+
+sizeFactors(sce) <- colSums(assay(sce))
+head(sizeFactors(sce))
+     
+#Add low dimensional representations:
+reducedDims(sce) <- list(LVis=griph_res$plotLVis)
+
+```
+
+
+
+
 
 
 # Closing remarks and additional resources
