@@ -557,7 +557,7 @@ https://cran.r-project.org/web/packages/Matrix/index.html
 ```{r SparseMatrix}  
 clean_norm_umi_counts.sparse <- Matrix(clean_norm_umi_counts,sparse=TRUE)
 
-head(clean_norm_umi_counts.sparse)
+head(clean_norm_umi_counts.sparse[,1:5])
 
 nnzero(clean_norm_umi_counts.sparse) #Number of non zero elements
 
@@ -565,7 +565,7 @@ nnzero(clean_norm_umi_counts.sparse) #Number of non zero elements
 length(clean_norm_umi_counts)/nnzero(clean_norm_umi_counts.sparse) 
 as.numeric(object.size(clean_norm_umi_counts))/as.numeric(object.size(clean_norm_umi_counts.sparse))
 
-# Calculation speed-up
+# Calculation speed-ups
 system.time(sapply(1:100, function(x){ sum(clean_norm_umi_counts)  } )  )
 system.time(sapply(1:100, function(x){ sum(clean_norm_umi_counts.sparse)  } )  )
 
